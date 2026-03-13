@@ -13,30 +13,15 @@
         <label for="sequence">RNA Sequence</label>
         <textarea id="sequence" rows="8" placeholder="Enter sequence using A,U,G,C"></textarea>
 
-        <label for="exampleSelect">Well-known RNA examples</label>
-        <div class="row">
-          <select id="exampleSelect"></select>
-          <button id="loadExampleBtn" class="secondary">Load Example</button>
-        </div>
-        <p id="exampleNote" class="info"></p>
-
         <div class="row">
           <label><input type="checkbox" id="allowWobble" checked /> Allow G-U wobble</label>
           <label>Min loop length <input id="minLoopLength" type="number" min="0" max="10" value="3" /></label>
         </div>
 
-        <h2>Visualization</h2>
-        <div class="row">
-          <label><input type="checkbox" id="showBackbone" checked /> Backbone</label>
-          <label><input type="checkbox" id="showPairs" checked /> Pair arcs</label>
-          <label><input type="checkbox" id="showLabels" /> Labels</label>
-        </div>
-
         <div class="row">
           <button id="predictBtn">Predict Fold</button>
+          <button id="exampleBtn" class="secondary">Load Example</button>
           <button id="resetViewBtn" class="secondary">Reset View</button>
-          <button id="clearPinBtn" class="secondary">Clear Pin</button>
-          <button id="exportPngBtn" class="secondary">Export PNG</button>
         </div>
 
         <p id="error" class="error" role="alert"></p>
@@ -54,7 +39,7 @@
 
       <section class="panel canvas-panel">
         <canvas id="rnaCanvas" width="900" height="700"></canvas>
-        <p id="hoverInfo" class="hover-info">Hover a base to inspect pairing. Click to pin.</p>
+        <p id="hoverInfo" class="hover-info">Hover a base to inspect pairing</p>
       </section>
     </main>
 

@@ -5,9 +5,7 @@ export function createRenderer(canvas, hoverEl) {
   let state = null;
   let transform = { x: canvas.width / 2, y: canvas.height / 2, scale: 1 };
   let hovered = -1;
-  let pinned = -1;
   let drag = null;
-  let options = { showBackbone: true, showPairs: true, showLabels: false };
 
   const resize = () => {
     const rect = canvas.getBoundingClientRect();
@@ -20,30 +18,12 @@ export function createRenderer(canvas, hoverEl) {
   function setState(next) {
     state = next;
     hovered = -1;
-    pinned = -1;
-    draw();
-  }
-
-  function setOptions(next) {
-    options = { ...options, ...next };
     draw();
   }
 
   function resetView() {
     transform = { x: canvas.width / 2, y: canvas.height / 2, scale: window.devicePixelRatio };
     draw();
-  }
-
-  function clearPin() {
-    pinned = -1;
-    draw();
-  }
-
-  function exportPng() {
-    const link = document.createElement('a');
-    link.download = 'rna-structure.png';
-    link.href = canvas.toDataURL('image/png');
-    link.click();
   }
 
   function screenToWorld(x, y) {
@@ -71,11 +51,29 @@ export function createRenderer(canvas, hoverEl) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     if (!state) return;
 
-    const activeIndex = pinned >= 0 ? pinned : hovered;
-
     ctx.save();
     ctx.translate(transform.x, transform.y);
     ctx.scale(transform.scale, transform.scale);
+
+    // backbone
+    ctx.strokeStyle = '#475569';
+    ctx.lineWidth = 1.4 / transform.scale;
+    ctx.beginPath();
+    state.layout.forEach((p, i) => {
+      if (i === 0) ctx.moveTo(p.x, p.y);
+      else ctx.lineTo(p.x, p.y);
+    });
+    ctx.stroke();
+
+    // pairs
+    ctx.strokeStyle = '#22d3ee';
+    ctx.lineWidth = 1.8 / transform.scale;
+    for (const [i, j] of state.pairs) {
+      ctx.beginPath();
+      ctx.moveTo(state.layout[i].x, state.layout[i].y);
+      ctx.lineTo(state.layout[j].x, state.layout[j].y);
+      ctx.stroke();
+    }
 
     const pairMap = new Map();
     state.pairs.forEach(([i, j]) => {
@@ -83,75 +81,25 @@ export function createRenderer(canvas, hoverEl) {
       pairMap.set(j, i);
     });
 
-    if (options.showBackbone) {
-      ctx.strokeStyle = '#334155';
-      ctx.lineWidth = 1.3 / transform.scale;
-      ctx.beginPath();
-      state.layout.forEach((p, i) => {
-        if (i === 0) ctx.moveTo(p.x, p.y);
-        else ctx.lineTo(p.x, p.y);
-      });
-      ctx.stroke();
-    }
-
-    if (options.showPairs) {
-      for (const [i, j] of state.pairs) {
-        const a = state.layout[i];
-        const b = state.layout[j];
-        const midX = (a.x + b.x) / 2;
-        const midY = (a.y + b.y) / 2;
-        const span = Math.abs(i - j);
-        const curvature = Math.min(0.55, 0.16 + span / Math.max(state.sequence.length, 1));
-        const ctrlX = midX * (1 - curvature);
-        const ctrlY = midY * (1 - curvature);
-        const isActivePair = i === activeIndex || j === activeIndex;
-
-        ctx.strokeStyle = isActivePair ? '#a5f3fc' : `rgba(34, 211, 238, ${Math.min(0.9, 0.25 + span / state.sequence.length)})`;
-        ctx.lineWidth = (isActivePair ? 2.8 : 1.5) / transform.scale;
-        ctx.beginPath();
-        ctx.moveTo(a.x, a.y);
-        ctx.quadraticCurveTo(ctrlX, ctrlY, b.x, b.y);
-        ctx.stroke();
-      }
-    }
-
     for (let i = 0; i < state.sequence.length; i += 1) {
       const p = state.layout[i];
       const base = state.sequence[i];
-      const isActive = i === activeIndex || pairMap.get(i) === activeIndex;
-      const isPaired = pairMap.has(i);
+      const isHovered = i === hovered || pairMap.get(i) === hovered;
 
-      ctx.fillStyle = isActive ? '#ffffff' : BASE_COLORS[base] ?? '#cbd5e1';
+      ctx.fillStyle = isHovered ? '#ffffff' : BASE_COLORS[base] ?? '#cbd5e1';
       ctx.beginPath();
-      ctx.arc(p.x, p.y, isActive ? 6.2 : 4.5, 0, Math.PI * 2);
+      ctx.arc(p.x, p.y, isHovered ? 6 : 4.5, 0, Math.PI * 2);
       ctx.fill();
-
-      if (!isPaired) {
-        ctx.strokeStyle = '#64748b';
-        ctx.lineWidth = 1 / transform.scale;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, 6.8, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-
-      if (options.showLabels && (state.sequence.length <= 120 || isActive)) {
-        ctx.fillStyle = '#cbd5e1';
-        ctx.font = `${12 / transform.scale}px system-ui`;
-        ctx.fillText(`${base}${i}`, p.x + 8 / transform.scale, p.y - 8 / transform.scale);
-      }
     }
 
     ctx.restore();
 
-    if (activeIndex >= 0) {
-      const partner = pairMap.get(activeIndex);
-      const distance = partner !== undefined ? Math.abs(partner - activeIndex) : 0;
-      hoverEl.textContent = `Index ${activeIndex} (${state.sequence[activeIndex]})` +
-        (partner !== undefined
-          ? ` pairs with ${partner} (${state.sequence[partner]}), span ${distance}`
-          : ' is unpaired');
+    if (hovered >= 0) {
+      const partner = pairMap.get(hovered);
+      hoverEl.textContent = `Index ${hovered} (${state.sequence[hovered]})` +
+        (partner !== undefined ? ` pairs with ${partner} (${state.sequence[partner]})` : ' is unpaired');
     } else {
-      hoverEl.textContent = 'Hover a base to inspect pairing. Click to pin.';
+      hoverEl.textContent = 'Hover a base to inspect pairing';
     }
   }
 
@@ -159,7 +107,7 @@ export function createRenderer(canvas, hoverEl) {
     const rect = canvas.getBoundingClientRect();
     const world = screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
     const next = nearestIndex(world);
-    if (pinned < 0 && next !== hovered) {
+    if (next !== hovered) {
       hovered = next;
       draw();
     }
@@ -173,17 +121,9 @@ export function createRenderer(canvas, hoverEl) {
     }
   });
 
-  canvas.addEventListener('click', (e) => {
-    const rect = canvas.getBoundingClientRect();
-    const world = screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
-    pinned = nearestIndex(world);
-    draw();
-  });
-
   canvas.addEventListener('mousedown', (e) => {
     drag = { x: e.clientX, y: e.clientY };
   });
-
   window.addEventListener('mouseup', () => {
     drag = null;
   });
@@ -198,5 +138,5 @@ export function createRenderer(canvas, hoverEl) {
   window.addEventListener('resize', resize);
   resize();
 
-  return { setState, setOptions, resetView, clearPin, exportPng };
+  return { setState, resetView };
 }

@@ -28,7 +28,6 @@ body {
 }
 .controls textarea,
 .controls input[type="number"],
-.controls select,
 #dotBracket {
   width: 100%;
   margin-top: 0.4rem;
@@ -59,7 +58,6 @@ button.secondary {
   color: var(--text);
 }
 .error { color: var(--error); min-height: 1.2em; }
-.info { color: var(--muted); min-height: 1.2em; margin: 0.4rem 0 0.2rem; }
 .result-grid {
   margin: 0.7rem 0;
   display: grid;
