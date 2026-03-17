@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RNA Fold Canvas Viewer</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <section class="panel controls">
+        <h1>RNA Fold Predictor <span id="appVersion" class="version-badge"></span></h1>
+        <label for="sequence">RNA Sequence</label>
+        <textarea id="sequence" rows="8" placeholder="Enter sequence using A,U,G,C"></textarea>
+
+        <label for="exampleSelect">Well-known RNA examples</label>
+        <div class="row">
+          <select id="exampleSelect"></select>
+          <button id="loadExampleBtn" class="secondary">Load Example</button>
+        </div>
+        <p id="exampleNote" class="info"></p>
+
+        <div class="row">
+          <label><input type="checkbox" id="allowWobble" checked /> Allow G-U wobble</label>
+          <label>Min loop length <input id="minLoopLength" type="number" min="0" max="10" value="3" /></label>
+        </div>
+
+        <h2>Visualization</h2>
+        <div class="row">
+          <label><input type="checkbox" id="showBackbone" checked /> Backbone</label>
+          <label><input type="checkbox" id="showPairs" checked /> Pair arcs</label>
+          <label><input type="checkbox" id="showLabels" /> Labels</label>
+        </div>
+
+        <div class="row">
+          <button id="predictBtn">Predict Fold</button>
+          <button id="resetViewBtn" class="secondary">Reset View</button>
+          <button id="clearPinBtn" class="secondary">Clear Pin</button>
+          <button id="exportPngBtn" class="secondary">Export PNG</button>
+        </div>
+
+        <p id="error" class="error" role="alert"></p>
+
+        <h2>Results</h2>
+        <div class="result-grid">
+          <div><strong>Length:</strong> <span id="lengthOut">-</span></div>
+          <div><strong>Pairs:</strong> <span id="pairsOut">-</span></div>
+          <div><strong>Score:</strong> <span id="scoreOut">-</span></div>
+          <div><strong>Runtime:</strong> <span id="runtimeOut">-</span></div>
+        </div>
+
+        <h2>Motif Summary (Initiated)</h2>
+        <div class="result-grid" id="motifGrid">
+          <div><strong>Stems:</strong> <span id="stemsOut">-</span></div>
+          <div><strong>Hairpins:</strong> <span id="hairpinsOut">-</span></div>
+          <div><strong>Internal loops:</strong> <span id="internalLoopsOut">-</span></div>
+          <div><strong>Bulges:</strong> <span id="bulgesOut">-</span></div>
+          <div><strong>Junctions:</strong> <span id="junctionsOut">-</span></div>
+          <div><strong>Pseudoknot crossings:</strong> <span id="knotCrossingsOut">-</span></div>
+        </div>
+
+        <label for="dotBracket">Dot-Bracket</label>
+        <textarea id="dotBracket" rows="4" readonly></textarea>
+      </section>
+
+      <section class="panel canvas-panel">
+        <canvas id="rnaCanvas" width="900" height="700"></canvas>
+        <p id="hoverInfo" class="hover-info">Hover a base to inspect pairing. Click to pin.</p>
+      </section>
+    </main>
+
+    <script type="module" src="js/app.js"></script>
+  </body>
+</html>
