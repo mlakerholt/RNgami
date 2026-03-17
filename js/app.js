@@ -1,7 +1,7 @@
 import { normalizeSequence, validateSequence, nussinovFold, toDotBracket } from './folding.js';
 import { circularLayout } from './layout.js';
 import { createRenderer } from './render.js';
-import { summarizeMotifs } from './motifs.js';
+import { analyzeStructure } from './motifs.js';
 import { RNA_EXAMPLES, getExampleById } from './examples.js';
 
 const APP_VERSION = 'v0.2.0';
@@ -92,13 +92,13 @@ function predict() {
   const { pairs, score } = nussinovFold(sequence, options);
   const runtimeMs = performance.now() - t0;
   const dotBracket = toDotBracket(sequence.length, pairs);
-  const motifSummary = summarizeMotifs(sequence, pairs);
+  const structure = analyzeStructure(sequence, pairs);
   const layout = circularLayout(sequence.length, Math.min(320, 130 + sequence.length * 1.4));
 
-  renderer.setState({ sequence, pairs, layout });
+  renderer.setState({ sequence, pairs, layout, motifs: structure.motifs, motifByIndex: structure.motifByIndex });
   syncRenderOptions();
   updateMetrics({ length: sequence.length, pairs: pairs.length, score, runtimeMs, dotBracket });
-  updateMotifSummary(motifSummary);
+  updateMotifSummary(structure.summary);
 }
 
 function populateExamples() {

@@ -1,4 +1,11 @@
 const BASE_COLORS = { A: '#34d399', U: '#60a5fa', G: '#f59e0b', C: '#f472b6' };
+const MOTIF_COLORS = {
+  hairpin: '#f97316',
+  internal_loop: '#ef4444',
+  bulge: '#eab308',
+  junction: '#a855f7',
+  pseudoknot: '#fb7185',
+};
 
 export function createRenderer(canvas, hoverEl) {
   const ctx = canvas.getContext('2d');
@@ -67,6 +74,23 @@ export function createRenderer(canvas, hoverEl) {
     return best;
   }
 
+  function drawMotifHalos(activeIndex) {
+    if (!state?.motifs?.length) return;
+    for (const motif of state.motifs) {
+      const color = MOTIF_COLORS[motif.type] ?? '#94a3b8';
+      const highlight = activeIndex >= 0 && motif.bases.includes(activeIndex);
+      ctx.strokeStyle = highlight ? '#ffffff' : color;
+      ctx.lineWidth = (highlight ? 2.6 : 1.1) / transform.scale;
+      for (const idx of motif.bases) {
+        const p = state.layout[idx];
+        if (!p) continue;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, highlight ? 9 : 7.3, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+  }
+
   function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     if (!state) return;
@@ -115,6 +139,8 @@ export function createRenderer(canvas, hoverEl) {
       }
     }
 
+    drawMotifHalos(activeIndex);
+
     for (let i = 0; i < state.sequence.length; i += 1) {
       const p = state.layout[i];
       const base = state.sequence[i];
@@ -146,12 +172,14 @@ export function createRenderer(canvas, hoverEl) {
     if (activeIndex >= 0) {
       const partner = pairMap.get(activeIndex);
       const distance = partner !== undefined ? Math.abs(partner - activeIndex) : 0;
+      const motifTypes = state.motifByIndex?.get(activeIndex) ?? [];
+      const motifSuffix = motifTypes.length ? ` | motifs: ${motifTypes.join(', ')}` : '';
       hoverEl.textContent = `Index ${activeIndex} (${state.sequence[activeIndex]})` +
         (partner !== undefined
           ? ` pairs with ${partner} (${state.sequence[partner]}), span ${distance}`
-          : ' is unpaired');
+          : ' is unpaired') + motifSuffix;
     } else {
-      hoverEl.textContent = 'Hover a base to inspect pairing. Click to pin.';
+      hoverEl.textContent = 'Hover a base to inspect pairing and motifs. Click to pin.';
     }
   }
 

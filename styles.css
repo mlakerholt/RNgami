@@ -97,3 +97,21 @@ canvas {
   vertical-align: middle;
   margin-left: 0.35rem;
 }
+
+.motif-legend {
+  margin: 0.35rem 0 0.75rem;
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+.chip {
+  font-size: 0.74rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: 999px;
+  border: 1px solid #475569;
+}
+.chip.hairpin { border-color: #f97316; color: #fdba74; }
+.chip.internal { border-color: #ef4444; color: #fca5a5; }
+.chip.bulge { border-color: #eab308; color: #fde68a; }
+.chip.junction { border-color: #a855f7; color: #d8b4fe; }
+.chip.knot { border-color: #fb7185; color: #fda4af; }

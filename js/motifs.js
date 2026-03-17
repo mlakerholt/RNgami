@@ -1,102 +1,145 @@
 /**
- * @typedef {'hairpin'|'internal_loop'|'bulge'|'junction'|'external'|'pseudoknot'} MotifType
+ * @typedef {'hairpin'|'internal_loop'|'bulge'|'junction'|'pseudoknot'} MotifType
  */
 
-/**
- * Build quick lookup maps from pair tuples.
- * @param {Array<[number, number]>} pairs
- */
-function buildPairMaps(pairs) {
+/** @param {Array<[number, number]>} pairs */
+export function buildPairMap(pairs) {
   const pairMap = new Map();
-  const startSet = new Set();
   for (const [i, j] of pairs) {
     pairMap.set(i, j);
     pairMap.set(j, i);
-    startSet.add(i);
   }
-  return { pairMap, startSet };
+  return pairMap;
 }
 
-/**
- * Detect crossing base-pair interactions (pseudoknot signature).
- * @param {Array<[number, number]>} pairs
- */
+/** @param {Array<[number, number]>} pairs */
 export function countCrossingPairs(pairs) {
   let crossings = 0;
   for (let a = 0; a < pairs.length; a += 1) {
     const [i, j] = pairs[a];
     for (let b = a + 1; b < pairs.length; b += 1) {
       const [k, l] = pairs[b];
-      if ((i < k && k < j && j < l) || (k < i && i < l && l < j)) {
-        crossings += 1;
-      }
+      if ((i < k && k < j && j < l) || (k < i && i < l && l < j)) crossings += 1;
     }
   }
   return crossings;
 }
 
+function enclosedPairCount(pairs, i, j) {
+  let count = 0;
+  for (const [a, b] of pairs) {
+    if (i < a && b < j) count += 1;
+  }
+  return count;
+}
+
+function classifyGapMotifs(stems) {
+  const motifs = [];
+  for (const stem of stems) {
+    for (let idx = 0; idx + 1 < stem.length; idx += 1) {
+      const [i, j] = stem[idx];
+      const [ni, nj] = stem[idx + 1];
+      const leftGap = ni - i - 1;
+      const rightGap = j - nj - 1;
+      if (leftGap <= 0 && rightGap <= 0) continue;
+
+      const bases = [];
+      for (let a = i + 1; a < ni; a += 1) bases.push(a);
+      for (let b = nj + 1; b < j; b += 1) bases.push(b);
+
+      if (leftGap > 0 && rightGap > 0) {
+        motifs.push({ type: 'internal_loop', bases, span: [i, j], size: leftGap + rightGap });
+      } else {
+        motifs.push({ type: 'bulge', bases, span: [i, j], size: leftGap + rightGap });
+      }
+    }
+  }
+  return motifs;
+}
+
 /**
- * Classify broad motif buckets from pair topology.
- * This is a kickoff-level motif pass designed for UI summaries.
+ * Build contiguous stems from sorted pairs.
+ * @param {Array<[number, number]>} pairs
+ */
+export function buildStems(pairs) {
+  const sorted = [...pairs].sort((a, b) => a[0] - b[0]);
+  const stems = [];
+  let current = [];
+
+  for (const pair of sorted) {
+    if (current.length === 0) {
+      current.push(pair);
+      continue;
+    }
+    const [pi, pj] = current[current.length - 1];
+    const [i, j] = pair;
+    if (i === pi + 1 && j === pj - 1) {
+      current.push(pair);
+    } else {
+      stems.push(current);
+      current = [pair];
+    }
+  }
+  if (current.length) stems.push(current);
+  return stems;
+}
+
+/**
+ * Full auto motif analysis from predicted base pairs.
  * @param {string} sequence
  * @param {Array<[number, number]>} pairs
  */
-export function summarizeMotifs(sequence, pairs) {
-  const n = sequence.length;
-  const { pairMap, startSet } = buildPairMaps(pairs);
+export function analyzeStructure(sequence, pairs) {
+  const pairMap = buildPairMap(pairs);
+  const stems = buildStems(pairs);
+
+  /** @type {Array<{type: MotifType, bases:number[], span:[number,number], size:number}>} */
+  const motifs = [];
+
+  // Hairpins and junction-like enclosures.
+  for (const [i, j] of pairs) {
+    const innerCount = enclosedPairCount(pairs, i, j);
+    if (innerCount === 0) {
+      const bases = [];
+      for (let k = i + 1; k < j; k += 1) if (!pairMap.has(k)) bases.push(k);
+      motifs.push({ type: 'hairpin', bases, span: [i, j], size: bases.length });
+    } else if (innerCount >= 2) {
+      motifs.push({ type: 'junction', bases: [i, j], span: [i, j], size: innerCount });
+    }
+  }
+
+  motifs.push(...classifyGapMotifs(stems));
+
+  const pseudoknotCrossings = countCrossingPairs(pairs);
+  if (pseudoknotCrossings > 0) {
+    motifs.push({
+      type: 'pseudoknot',
+      bases: [...new Set(pairs.flat())],
+      span: [0, Math.max(0, sequence.length - 1)],
+      size: pseudoknotCrossings,
+    });
+  }
+
+  const motifByIndex = new Map();
+  motifs.forEach((motif) => {
+    for (const index of motif.bases) {
+      if (!motifByIndex.has(index)) motifByIndex.set(index, []);
+      motifByIndex.get(index).push(motif.type);
+    }
+  });
 
   const summary = {
-    stems: 0,
-    hairpins: 0,
-    internalLoops: 0,
-    bulges: 0,
-    junctions: 0,
-    externalUnpaired: 0,
-    pseudoknotCrossings: countCrossingPairs(pairs),
+    stems: stems.length,
+    hairpins: motifs.filter((m) => m.type === 'hairpin').length,
+    internalLoops: motifs.filter((m) => m.type === 'internal_loop').length,
+    bulges: motifs.filter((m) => m.type === 'bulge').length,
+    junctions: motifs.filter((m) => m.type === 'junction').length,
+    pseudoknotCrossings,
   };
 
-  // Count stems as contiguous helix runs.
-  for (const [i, j] of pairs) {
-    if (!pairMap.has(i - 1) || pairMap.get(i - 1) !== j + 1) {
-      summary.stems += 1;
-    }
-  }
+  return { summary, motifs, motifByIndex, stems, pairMap };
+}
 
-  // Classify enclosed regions by pair adjacency.
-  for (const [i, j] of pairs) {
-    if (!startSet.has(i)) continue;
-
-    const nextI = i + 1;
-    const nextJ = j - 1;
-    const hasInnerPair = pairMap.has(nextI) && pairMap.get(nextI) === nextJ;
-
-    if (!hasInnerPair) {
-      // terminal enclosure -> hairpin-ish loop
-      const innerPairs = pairs.filter(([a, b]) => i < a && b < j).length;
-      if (innerPairs === 0) summary.hairpins += 1;
-      else summary.junctions += 1;
-      continue;
-    }
-
-    // inspect asymmetry between paired ladder steps for bulge/internal loop.
-    let left = nextI;
-    let right = nextJ;
-    while (left < right && pairMap.has(left) && pairMap.get(left) === right) {
-      left += 1;
-      right -= 1;
-    }
-    if (left >= right) continue;
-
-    const leftUnpaired = Number(!pairMap.has(left));
-    const rightUnpaired = Number(!pairMap.has(right));
-
-    if (leftUnpaired + rightUnpaired === 1) summary.bulges += 1;
-    if (leftUnpaired + rightUnpaired === 2) summary.internalLoops += 1;
-  }
-
-  for (let idx = 0; idx < n; idx += 1) {
-    if (!pairMap.has(idx)) summary.externalUnpaired += 1;
-  }
-
-  return summary;
+export function summarizeMotifs(sequence, pairs) {
+  return analyzeStructure(sequence, pairs).summary;
 }
