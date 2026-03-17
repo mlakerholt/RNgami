@@ -1,6 +1,7 @@
 import { normalizeSequence, validateSequence, nussinovFold, toDotBracket } from './folding.js';
 import { circularLayout } from './layout.js';
 import { createRenderer } from './render.js';
+import { summarizeMotifs } from './motifs.js';
 import { RNA_EXAMPLES, getExampleById } from './examples.js';
 
 const APP_VERSION = 'v0.2.0';
@@ -25,6 +26,12 @@ const els = {
   pairsOut: document.getElementById('pairsOut'),
   scoreOut: document.getElementById('scoreOut'),
   runtimeOut: document.getElementById('runtimeOut'),
+  stemsOut: document.getElementById('stemsOut'),
+  hairpinsOut: document.getElementById('hairpinsOut'),
+  internalLoopsOut: document.getElementById('internalLoopsOut'),
+  bulgesOut: document.getElementById('bulgesOut'),
+  junctionsOut: document.getElementById('junctionsOut'),
+  knotCrossingsOut: document.getElementById('knotCrossingsOut'),
   hoverInfo: document.getElementById('hoverInfo'),
   canvas: document.getElementById('rnaCanvas'),
   appVersion: document.getElementById('appVersion'),
@@ -43,6 +50,16 @@ function syncRenderOptions() {
     showPairs: els.showPairs.checked,
     showLabels: els.showLabels.checked,
   });
+}
+
+
+function updateMotifSummary(summary) {
+  els.stemsOut.textContent = String(summary.stems);
+  els.hairpinsOut.textContent = String(summary.hairpins);
+  els.internalLoopsOut.textContent = String(summary.internalLoops);
+  els.bulgesOut.textContent = String(summary.bulges);
+  els.junctionsOut.textContent = String(summary.junctions);
+  els.knotCrossingsOut.textContent = String(summary.pseudoknotCrossings);
 }
 
 function updateMetrics({ length, pairs, score, runtimeMs, dotBracket }) {
@@ -75,11 +92,13 @@ function predict() {
   const { pairs, score } = nussinovFold(sequence, options);
   const runtimeMs = performance.now() - t0;
   const dotBracket = toDotBracket(sequence.length, pairs);
+  const motifSummary = summarizeMotifs(sequence, pairs);
   const layout = circularLayout(sequence.length, Math.min(320, 130 + sequence.length * 1.4));
 
   renderer.setState({ sequence, pairs, layout });
   syncRenderOptions();
   updateMetrics({ length: sequence.length, pairs: pairs.length, score, runtimeMs, dotBracket });
+  updateMotifSummary(motifSummary);
 }
 
 function populateExamples() {

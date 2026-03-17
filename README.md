@@ -21,7 +21,12 @@ npm test
 - Hover + click-to-pin nucleotide inspection with partner/span details.
 - Toggle controls for backbone, pair arcs, and residue labels.
 - Canvas pan/zoom with reset view and PNG export.
+- Motif summary panel (initiation pass): stems, hairpins, internal loops, bulges, junctions, pseudoknot crossings.
 
 ## Notes
 - Uses a Nussinov-style dynamic programming algorithm for base pairing.
 - Visualization-focused upgrade roadmap is documented in `RNA_VISUALIZATION_UPGRADE_PLAN.md`.
+
+
+## Next roadmap
+- Full-sequence motif prediction and visualization plan: `RNA_FULL_SEQUENCE_STRUCTURE_PLAN.md`.
